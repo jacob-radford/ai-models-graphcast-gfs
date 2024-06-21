@@ -92,7 +92,6 @@ def create_training_xarray(
         lon = fields_sfc[0].metadata("distinctLongitudes")
 
         # SURFACE FIELDS
-
         fields_sfc = fields_sfc.order_by("param", "valid_datetime")
         sfc = defaultdict(list)
         given_datetimes = set()
@@ -112,12 +111,14 @@ def create_training_xarray(
             levels.add(field.metadata("level"))
 
         data_vars = {}
-
         for param, fields in sfc.items():
+            if param in ["100u","100v","sp","tcwv"]:
+                continue
+
             if param in ("z", "lsm"):
                 data_vars[CF_NAME_SFC[param]] = (["lat", "lon"], fields[0].to_numpy())
                 continue
-
+                
             data = np.stack(
                 [field.to_numpy(dtype=np.float32) for field in fields]
             ).reshape(
@@ -137,10 +138,12 @@ def create_training_xarray(
                 ),
                 constant_values=(np.nan,),
             )
-
             data_vars[CF_NAME_SFC[param]] = (["batch", "time", "lat", "lon"], data)
 
         for param, fields in pl.items():
+            if param in ["r"]:
+                continue
+
             data = np.stack(
                 [field.to_numpy(dtype=np.float32) for field in fields]
             ).reshape(

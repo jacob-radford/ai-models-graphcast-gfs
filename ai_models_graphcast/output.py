@@ -31,12 +31,13 @@ def save_output_xarray(
         "total_precipitation_6hr"
     ].cumsum(dim="time")
 
+    all_fields = all_fields.sel(param=["u","v","w","t","z","q","10u","10v","msl","2t","tp","lsm"])
+    
     all_fields = all_fields.order_by(
         valid_datetime="descending",
         param_level=ordering,
         remapping={"param_level": "{param}{levelist}"},
     )
-
     for time in range(lead_time // hour_steps):
         for fs in all_fields[: len(all_fields) // len(lagged)]:
             param, level = fs["shortName"], fs["level"]

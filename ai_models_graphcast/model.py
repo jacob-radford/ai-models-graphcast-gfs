@@ -236,6 +236,8 @@ class GraphcastModel(Model):
                 input_xr.to_netcdf("input_xr.nc")
                 forcings.to_netcdf("forcings_xr.nc")
 
+        input_xr.to_netcdf("input_xr_%s%s.nc" % (str(self.date),str(self.time)))
+        forcings.to_netcdf("forcings_xr_%s%s.nc" % (str(self.date),str(self.time)))
         with self.timer("Doing full rollout prediction in JAX"):
             output = self.model(
                 rng=jax.random.PRNGKey(0),
