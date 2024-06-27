@@ -18,7 +18,7 @@ import xarray
 from ai_models.model import Model
 
 from .input import create_training_xarray
-from .output import save_output_xarray
+from .output import save_output_xarray,save_output_xarray_nc
 
 LOG = logging.getLogger(__name__)
 
@@ -214,7 +214,6 @@ class GraphcastModel(Model):
                 )
 
             gc.collect()
-
             if self.debug:
                 training_xarray.to_netcdf("training_xarray.nc")
 
@@ -246,18 +245,28 @@ class GraphcastModel(Model):
 
             if self.debug:
                 output.to_netcdf("output.nc")
-
         with self.timer("Saving output data"):
-            save_output_xarray(
-                output=output,
-                write=self.write,
-                target_variables=self.task_config.target_variables,
-                all_fields=self.all_fields,
-                ordering=self.ordering,
-                lead_time=self.lead_time,
-                hour_steps=self.hour_steps,
-                lagged=self.lagged,
-            )
+            if 'g' in self.nc_or_grib:
+                save_output_xarray(
+                    output=output,
+                    write=self.write,
+                    target_variables=self.task_config.target_variables,
+                    all_fields=self.all_fields,
+                    ordering=self.ordering,
+                    lead_time=self.lead_time,
+                    hour_steps=self.hour_steps,
+                    lagged=self.lagged,
+                )
+            if 'n' in self.nc_or_grib:
+                save_output_xarray_nc(
+                    input_xr,
+                    output,
+                    self.lead_time,
+                    self.hour_steps,
+                    self.ncpath,
+                    self.date,
+                    self.time
+                )
 
     def patch_retrieve_request(self, r):
         if r.get("class", "od") != "od":
