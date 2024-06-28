@@ -20,25 +20,21 @@ def read(fname):
     return io.open(file_path, encoding="utf-8").read()
 
 
-version = None
-for line in read("ai_models_graphcast/__init__.py").split("\n"):
-    if line.startswith("__version__"):
-        version = line.split("=")[-1].strip()[1:-1]
-
+version = "0.0.3"
 
 assert version
 
 
 setuptools.setup(
-    name="ai-models-graphcast",
+    name="ai-models-graphcast-gfs",
     version=version,
-    description="Run graphcast ai weather models",
+    description="Run graphcast ai weather models with capabilities for GFS and GDAS initial conditions and NetCDF output",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
-    author="European Centre for Medium-Range Weather Forecasts (ECMWF)",
-    author_email="software.support@ecmwf.int",
+    author="Jacob Radford",
+    author_email="jacob.t.radford@gmail.com",
     license="Apache License Version 2.0",
-    url="https://github.com/ecmwf-lab/ai-models-graphcast",
+    url="https://github.com/jacob-radford/ai-models-graphcast-gfs",
     packages=setuptools.find_packages(),
     include_package_data=True,
     # JAX requirements are in requirements.txt
@@ -49,8 +45,8 @@ setuptools.setup(
     zip_safe=True,
     keywords="tool",
     entry_points={
-        "ai_models.model": [
-            "graphcast = ai_models_graphcast.model:model",
+        "ai_models_gfs.model": [
+            "graphcast = ai_models_graphcast_gfs.model:model",
         ]
     },
     classifiers=[
