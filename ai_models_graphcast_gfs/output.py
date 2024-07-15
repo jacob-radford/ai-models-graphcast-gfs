@@ -198,7 +198,7 @@ def save_output_xarray_nc(
     year = str(date)[:4]
     month = str(date)[4:6]
     day = str(date)[6:8]
-    hh = str(time).zfill(4)[:2]
+    hh = str(int(time)/100).zfill(2)
     initdt = datetime.datetime.strptime(f"{year}{month}{day}{hh}", "%Y%m%d%H")
     times = [int((initdt + datetime.timedelta(hours=int(i))).timestamp()) for i in 
              np.arange(0, lead_time + hour_steps, hour_steps)]
