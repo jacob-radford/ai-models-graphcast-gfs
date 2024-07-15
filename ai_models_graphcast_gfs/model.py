@@ -14,6 +14,7 @@ import logging
 import os
 import numpy as np
 from functools import cached_property
+from geopy import distance
 
 import xarray
 from ai_models_gfs.model import Model
@@ -203,6 +204,7 @@ class GraphcastModel(Model):
                     forcing_variables=self.forcing_variables,
                     constants=self.override_constants,
                     timer=self.timer,
+                    onedeg=self.onedeg
                 )
 
             gc.collect()
@@ -227,9 +229,10 @@ class GraphcastModel(Model):
                 input_xr.to_netcdf("input_xr.nc")
                 forcings.to_netcdf("forcings_xr.nc")
 
-        if self.onedeg:
-            input_xr,template,forcings = self.interpolate(input_xr,template,forcings)
-
+        if self.perturbation:
+            input_xr = self.perturb(input_xr)
+            print(input_xr['2m_temperature'].shape)
+            print(np.nanmax(input_xr['2m_temperature']))
         with self.timer("Doing full rollout prediction in JAX"):
             output = self.model(
                 rng=jax.random.PRNGKey(0),
@@ -326,10 +329,43 @@ class GraphcastModel(Model):
                 [0.25, 0.25],
             )
 
-    def interpolate(self,input_xr,targets,forcings):
-        input_xr = input_xr.interp(lat=np.arange(-90,91,1),lon=np.arange(0,360,1),method='linear')
-        targets = targets.interp(lat=np.arange(-90,91,1),lon=np.arange(0,360,1),method='linear')
-        forcings = forcings.interp(lat=np.arange(-90,91,1),lon=np.arange(0,360,1),method='linear')
-        return input_xr,targets,forcings
+    def perturb(self,input_xr):
 
+        perturbvar = self.perturbation[0]
+        perturbmag = float(self.perturbation[1])
+        given_latitude = float(self.perturbation[2])
+        given_longitude = float(self.perturbation[3])
+        perturbrad = float(self.perturbation[4])
+
+        # Convert dataset longitudes from [0, 360] to [-180, 180]
+        clongitudes = ((input_xr['lon'] + 180) % 360) - 180
+
+        # Convert degrees to radians
+        given_lat_rad = np.radians(given_latitude)
+        given_lon_rad = np.radians(given_longitude)
+        lats_rad = np.radians(input_xr['lat'].values)
+        lons_rad = np.radians(clongitudes.values)  # Ensure to access underlying NumPy arrays
+
+        # Create meshgrid of latitudes and longitudes
+        lats, lons = np.meshgrid(lats_rad, lons_rad, indexing='ij')
+
+        lats_deg, lons_deg = np.meshgrid(input_xr['lat'].values, clongitudes.values, indexing='ij')
+        # Calculate differences
+        dlat = lats - given_lat_rad
+        dlon = lons - given_lon_rad
+
+        # Apply Haversine formula
+        a = np.sin(dlat / 2.0)**2 + np.cos(given_lat_rad) * np.cos(lats) * np.sin(dlon / 2.0)**2
+        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+        # Radius of Earth in kilometers
+        earth_radius_km = 6371.0
+
+        # Calculate distances
+        distances = earth_radius_km * c
+
+        # Create a mask for points within the radius
+        mask = distances <= perturbrad
+        input_xr[perturbvar] = input_xr[perturbvar].where(~mask, input_xr[perturbvar] + perturbmag)
+        return input_xr
 model = GraphcastModel

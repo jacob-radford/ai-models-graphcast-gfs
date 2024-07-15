@@ -9,7 +9,7 @@
 import datetime
 import logging
 from collections import defaultdict
-
+from scipy.interpolate import RegularGridInterpolator
 import climetlab as cml
 import numpy as np
 import xarray as xr
@@ -36,7 +36,7 @@ CF_NAME_PL = {
 }
 
 
-def forcing_variables_numpy(sample, forcing_variables, dates):
+def forcing_variables_numpy(sample, forcing_variables, dates, onedeg):
     """Generate variables from climetlabs
 
     Args:
@@ -53,10 +53,15 @@ def forcing_variables_numpy(sample, forcing_variables, dates):
         param=forcing_variables,
     )
 
+    if not onedeg:
+        force = ds.order_by(param=forcing_variables, valid_datetime="ascending").to_numpy(dtype=np.float32).reshape(len(forcing_variables), len(dates), 721, 1440)
+    else:
+        force = np.zeros((len(forcing_variables),len(dates),181,360))
+        for k,forcing_variable in enumerate(ds.order_by(param=forcing_variables, valid_datetime="ascending")):
+            force[0,k,:,:] = interpolate(forcing_variable.to_numpy(dtype=np.float32))
+        force = force.reshape(len(forcing_variables),len(dates),181,360)
     return (
-        ds.order_by(param=forcing_variables, valid_datetime="ascending")
-        .to_numpy(dtype=np.float32)
-        .reshape(len(forcing_variables), len(dates), 721, 1440)
+        force
     )
 
 
@@ -71,6 +76,7 @@ def create_training_xarray(
     forcing_variables,
     constants,
     timer,
+    onedeg
 ):
     time_deltas = [
         datetime.timedelta(hours=h)
@@ -82,15 +88,18 @@ def create_training_xarray(
 
     with timer("Creating forcing variables"):
         forcing_numpy = forcing_variables_numpy(
-            fields_sfc, forcing_variables, all_datetimes
+            fields_sfc, forcing_variables, all_datetimes,onedeg
         )
 
     with timer("Converting GRIB to xarray"):
         # Create Input dataset
 
-        lat = fields_sfc[0].metadata("distinctLatitudes")
-        lon = fields_sfc[0].metadata("distinctLongitudes")
-
+        if not onedeg:
+            lat = fields_sfc[0].metadata("distinctLatitudes")
+            lon = fields_sfc[0].metadata("distinctLongitudes")
+        else:
+            lat = np.arange(90,-91,-1)
+            lon = np.arange(0,360,1)
         # SURFACE FIELDS
         fields_sfc = fields_sfc.order_by("param", "valid_datetime")
         sfc = defaultdict(list)
@@ -116,17 +125,30 @@ def create_training_xarray(
                 continue
 
             if param in ("z", "lsm"):
-                data_vars[CF_NAME_SFC[param]] = (["lat", "lon"], fields[0].to_numpy())
+                if not onedeg:
+                    data_vars[CF_NAME_SFC[param]] = (["lat", "lon"], fields[0].to_numpy())
+                else:   
+                    data_vars[CF_NAME_SFC[param]] = (["lat", "lon"], interpolate(fields[0].to_numpy()))
                 continue
-                
-            data = np.stack(
-                [field.to_numpy(dtype=np.float32) for field in fields]
-            ).reshape(
-                1,
-                len(given_datetimes),
-                len(lat),
-                len(lon),
-            )
+            
+            if not onedeg: 
+                data = np.stack(
+                    [field.to_numpy(dtype=np.float32) for field in fields]
+                ).reshape(
+                    1,
+                    len(given_datetimes),
+                    len(lat),
+                    len(lon),
+                )
+            else:
+                data = np.stack(
+                    [interpolate(field.to_numpy(dtype=np.float32)) for field in fields]
+                ).reshape(
+                    1,
+                    len(given_datetimes),
+                    len(lat),
+                    len(lon),
+                )
 
             data = np.pad(
                 data,
@@ -143,16 +165,27 @@ def create_training_xarray(
         for param, fields in pl.items():
             if param in ["r"]:
                 continue
+            if not onedeg:
+                data = np.stack(
+                    [field.to_numpy(dtype=np.float32) for field in fields]
+                ).reshape(
+                    1,
+                    len(given_datetimes),
+                    len(levels),
+                    len(lat),
+                    len(lon),
+                )
+            else:
+                data = np.stack(
+                    [interpolate(field.to_numpy(dtype=np.float32)) for field in fields]
+                ).reshape(
+                    1,
+                    len(given_datetimes),
+                    len(levels),
+                    len(lat),
+                    len(lon),
+                )
 
-            data = np.stack(
-                [field.to_numpy(dtype=np.float32) for field in fields]
-            ).reshape(
-                1,
-                len(given_datetimes),
-                len(levels),
-                len(lat),
-                len(lon),
-            )
             data = np.pad(
                 data,
                 (
@@ -169,7 +202,6 @@ def create_training_xarray(
                 ["batch", "time", "level", "lat", "lon"],
                 data,
             )
-
         data_vars["toa_incident_solar_radiation"] = (
             ["batch", "time", "lat", "lon"],
             forcing_numpy[0:1, :, :, :],
@@ -201,6 +233,21 @@ def create_training_xarray(
 
         for patch in ("geopotential_at_surface", "land_sea_mask"):
             LOG.info("PATCHING %s", patch)
-            training_xarray[patch] = x[patch]
+            if not onedeg:
+                training_xarray[patch] = x[patch]
+            else:
+                print(x[patch])
+#                training_xarray[patch] = 
 
     return training_xarray, time_deltas
+
+def interpolate(data):
+    qlats = np.arange(90,-90.25,-0.25)
+    qlons = np.arange(0,360,0.25)
+    interpolator = RegularGridInterpolator((qlats,qlons),data)
+    olats = np.arange(90,-91,-1)
+    olons = np.arange(0,360,1)
+    olon_grid,olat_grid = np.meshgrid(olons,olats)
+    points = np.array([olat_grid.flatten(),olon_grid.flatten()]).T
+    data_interpolated = interpolator(points).reshape(olat_grid.shape)
+    return data_interpolated
