@@ -8,7 +8,7 @@
 import logging
 
 import numpy as np
-
+import eccodes
 from .convert import GRIB_TO_CF
 from .convert import GRIB_TO_XARRAY_PL
 from .convert import GRIB_TO_XARRAY_SFC
@@ -26,10 +26,12 @@ def save_output_xarray(
     lead_time,
     hour_steps,
     lagged,
+    onedeg,
 ):
     LOG.info("Converting output xarray to GRIB and saving")
 
     output["total_precipitation_6hr"] = output.data_vars["total_precipitation_6hr"].cumsum(dim="time")
+    all_fields = all_fields.sel(param_level=ordering)
 
     all_fields = all_fields.order_by(
         valid_datetime="descending",
@@ -39,6 +41,7 @@ def save_output_xarray(
 
     for time in range(lead_time // hour_steps):
         for fs in all_fields[: len(all_fields) // len(lagged)]:
+
             param, level = fs.metadata("shortName"), fs.metadata("levelist", default=None)
 
             if level is not None:
@@ -54,8 +57,25 @@ def save_output_xarray(
                 values = output.isel(time=time).data_vars[param].values
 
             # We want to field north=>south
+            
+            if onedeg:
+                grib_handle = fs.handle._handle
+                eccodes.codes_set(grib_handle, "Ni", 360)  # Longitude points
+                eccodes.codes_set(grib_handle, "Nj", 181)  # Latitude points
 
-            values = np.flipud(values.reshape(fs.shape))
+                # Set correct grid spacing for 1-degree resolution
+                eccodes.codes_set(grib_handle, "iDirectionIncrementInDegrees", 1.0)
+                eccodes.codes_set(grib_handle, "jDirectionIncrementInDegrees", 1.0)
+
+                # Define latitude/longitude bounds
+                eccodes.codes_set(grib_handle, "latitudeOfFirstGridPointInDegrees", 90)
+                eccodes.codes_set(grib_handle, "longitudeOfFirstGridPointInDegrees", 0)
+                eccodes.codes_set(grib_handle, "latitudeOfLastGridPointInDegrees", -90)
+                eccodes.codes_set(grib_handle, "longitudeOfLastGridPointInDegrees", 359)
+
+                values = np.flipud(values.reshape((181,360)))
+            else:
+                values = np.flipud(values.reshape(fs.shape))
 
             if param == "total_precipitation_6hr":
                 write(

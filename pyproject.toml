@@ -16,7 +16,7 @@ requires = [
 ]
 
 [project]
-name = "ai-models-graphcast"
+name = "ai-models-graphcast-gfs"
 
 description = "An ai-models plugin to run Deepmind's graphcast model"
 keywords = [
@@ -52,16 +52,18 @@ dynamic = [
 # JAX requirements are in requirements.txt
 
 dependencies = [
-  "ai-models>=0.4.0",
   "dm-tree",
   "dm-haiku==0.0.10",
+  "ai-models-gfs"
 ]
 
 optional-dependencies.dev = [
   "pre-commit",
 ]
-urls.Repository = "https://github.com/ecmwf-lab/ai-models-graphcast"
-entry-points."ai_models.model".graphcast = "ai_models_graphcast.model:model"
+urls.Repository = "https://github.com/ecmwf-lab/ai-models-graphcast-gfs"
+entry-points."ai_models_gfs.model".graphcast = "ai_models_graphcast_gfs.model:model"
+entry-points."ai_models_gfs.model"."graphcast-0p25" = "ai_models_graphcast_gfs.model:GraphcastModel"
+entry-points."ai_models_gfs.model"."graphcast-1p00" = "ai_models_graphcast_gfs.model:GraphcastModel1Deg"
 
 [tool.setuptools_scm]
-version_file = "src/ai_models_graphcast/_version.py"
+version_file = "src/ai_models_graphcast_gfs/_version.py"

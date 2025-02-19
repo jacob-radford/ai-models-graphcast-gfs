@@ -1,6 +1,6 @@
-# ai-models-graphcast
+# ai-models-graphcast-gfs
 
-`ai-models-graphcast` is an [ai-models](https://github.com/ecmwf-lab/ai-models) plugin to run Google Deepmind's [GraphCast](https://github.com/deepmind/graphcast).
+`ai-models-graphcast-gfs` is an extension of the [ai-models-graphcast](https://github.com/ecmwf-lab/ai-models-graphcast) package, which itself is a plugin to run Google Deepmind's [GraphCast](https://github.com/deepmind/graphcast) with [ai-models](https://github.com/ecmwf-lab/ai-models).
 
 GraphCast: Learning skillful medium-range global weather forecasting, arXiv preprint: 2212.12794, 2022. https://arxiv.org/abs/2212.12794
 
@@ -13,13 +13,12 @@ The model weights are made available for use under the terms of the Creative Com
 To install the package, run:
 
 ```bash
-pip install ai-models-graphcast
+pip install ai-models-graphcast-gfs
 ```
 
 This will install the package and most of its dependencies.
 
 Then to install graphcast dependencies (and Jax on GPU):
-
 
 
 ### Graphcast and Jax
