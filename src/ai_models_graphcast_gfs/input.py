@@ -139,10 +139,7 @@ def create_training_xarray(
 
         for param, fields in pl.items():
             if param not in CF_NAME_PL.keys():
-                print(param," not in")
                 continue
-            else:
-                print(param," in")
             data = np.stack([field.to_numpy(dtype=np.float32) for field in fields]).reshape(
                 1,
                 len(given_datetimes),

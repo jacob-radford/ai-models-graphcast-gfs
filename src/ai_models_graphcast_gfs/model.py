@@ -438,6 +438,7 @@ class GraphcastModel1Deg(Model):
             if self.debug:
                 training_xarray.to_netcdf("training_xarray.nc")
 
+            training_xarray = self.interpolate(training_xarray)
             with self.timer("Extracting input targets"):
                 (
                     input_xr,
@@ -450,13 +451,9 @@ class GraphcastModel1Deg(Model):
                     ],
                     **dataclasses.asdict(self.task_config),
                 )
-
             if self.debug:
                 input_xr.to_netcdf("input_xr.nc")
                 forcings.to_netcdf("forcings_xr.nc")
-
-        with self.timer("Interpolating inputs to 1 deg"):
-            input_xr, template, forcings = self.interpolate(input_xr,template,forcings)
 
         with self.timer("Doing full rollout prediction in JAX"):
             output = self.model(
@@ -482,13 +479,11 @@ class GraphcastModel1Deg(Model):
                 onedeg=True,
             )
             
-    def interpolate(self,input_xr,template,forcings):
+    def interpolate(self,training_xarray):
         new_lat = np.arange(-90, 91, 1)
         new_lon = np.arange(0, 360, 1)
-        input_xr = input_xr.interp(lat=new_lat, lon=new_lon, method="linear")
-        template = template.interp(lat=new_lat, lon=new_lon, method="linear")
-        forcings = forcings.interp(lat=new_lat, lon=new_lon, method="linear")
-        return input_xr, template, forcings
+        training_xarray = training_xarray.interp(lat=new_lat, lon=new_lon, method="linear")
+        return training_xarray
 
     def patch_retrieve_request(self, r):
         if r.get("class", "od") != "od":
