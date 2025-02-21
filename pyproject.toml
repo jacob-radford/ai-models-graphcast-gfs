@@ -17,7 +17,7 @@ requires = [
 
 [project]
 name = "ai-models-graphcast-gfs"
-version = "0.0.13"
+version = "0.0.15"
 
 
 description = "An ai-models plugin to run Deepmind's graphcast model"
@@ -51,7 +51,7 @@ classifiers = [
 
 dependencies = [
   "dm-tree",
-  "dm-haiku==0.0.10",
+  "dm-haiku==0.0.13",
   "ai-models-gfs"
 ]
 
