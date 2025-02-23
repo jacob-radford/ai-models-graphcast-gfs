@@ -6,9 +6,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-
-import numpy as np
 import eccodes
+import numpy as np
+
 from .convert import GRIB_TO_CF
 from .convert import GRIB_TO_XARRAY_PL
 from .convert import GRIB_TO_XARRAY_SFC
@@ -26,12 +26,13 @@ def save_output_xarray(
     lead_time,
     hour_steps,
     lagged,
-    onedeg,
+    onedeg
 ):
     LOG.info("Converting output xarray to GRIB and saving")
 
     output["total_precipitation_6hr"] = output.data_vars["total_precipitation_6hr"].cumsum(dim="time")
-    all_fields = all_fields.sel(param_level=ordering)
+
+    all_fields = all_fields.sel(param_level=ordering, remapping={"param_level": "{param}{levelist}"})
 
     all_fields = all_fields.order_by(
         valid_datetime="descending",
@@ -40,10 +41,8 @@ def save_output_xarray(
     )
 
     for time in range(lead_time // hour_steps):
-        for fs in all_fields[: len(all_fields) // len(lagged)]:
-
+        for fs in all_fields[: len(all_fields) // len(lagged) + 1]:
             param, level = fs.metadata("shortName"), fs.metadata("levelist", default=None)
-
             if level is not None:
                 param = GRIB_TO_XARRAY_PL.get(param, param)
                 if param not in target_variables:
@@ -57,7 +56,6 @@ def save_output_xarray(
                 values = output.isel(time=time).data_vars[param].values
 
             # We want to field north=>south
-            
             if onedeg:
                 grib_handle = fs.handle._handle
                 eccodes.codes_set(grib_handle, "Ni", 360)  # Longitude points

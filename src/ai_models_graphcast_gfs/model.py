@@ -16,6 +16,7 @@ import xarray
 from ai_models_gfs.model import Model
 
 from .input import create_training_xarray
+from .input import create_training_xarray_1deg
 from .output import save_output_xarray
 
 LOG = logging.getLogger(__name__)
@@ -217,7 +218,6 @@ class GraphcastModel(Model):
                 input_xr.to_netcdf("input_xr.nc")
                 forcings.to_netcdf("forcings_xr.nc")
         
-
         with self.timer("Doing full rollout prediction in JAX"):
             output = self.model(
                 rng=jax.random.PRNGKey(0),
@@ -239,7 +239,7 @@ class GraphcastModel(Model):
                 lead_time=self.lead_time,
                 hour_steps=self.hour_steps,
                 lagged=self.lagged,
-                onedeg=False,
+                onedeg=False
             )
 
     def patch_retrieve_request(self, r):
@@ -421,7 +421,7 @@ class GraphcastModel1Deg(Model):
 
         with self.timer("Creating input data (total)"):
             with self.timer("Creating training data"):
-                training_xarray, time_deltas = create_training_xarray(
+                training_xarray, time_deltas = create_training_xarray_1deg(
                     fields_sfc=self.fields_sfc,
                     fields_pl=self.fields_pl,
                     lagged=self.lagged,
@@ -438,7 +438,6 @@ class GraphcastModel1Deg(Model):
             if self.debug:
                 training_xarray.to_netcdf("training_xarray.nc")
 
-            training_xarray = self.interpolate(training_xarray)
             with self.timer("Extracting input targets"):
                 (
                     input_xr,
@@ -476,15 +475,9 @@ class GraphcastModel1Deg(Model):
                 lead_time=self.lead_time,
                 hour_steps=self.hour_steps,
                 lagged=self.lagged,
-                onedeg=True,
+                onedeg=True
             )
             
-    def interpolate(self,training_xarray):
-        new_lat = np.arange(-90, 91, 1)
-        new_lon = np.arange(0, 360, 1)
-        training_xarray = training_xarray.interp(lat=new_lat, lon=new_lon, method="linear")
-        return training_xarray
-
     def patch_retrieve_request(self, r):
         if r.get("class", "od") != "od":
             return
