@@ -193,6 +193,7 @@ class GraphcastModel(Model):
                     forcing_variables=self.forcing_variables,
                     constants=self.override_constants,
                     timer=self.timer,
+                    onedeg=False
                 )
 
             gc.collect()
@@ -420,7 +421,7 @@ class GraphcastModel1Deg(Model):
 
         with self.timer("Creating input data (total)"):
             with self.timer("Creating training data"):
-                training_xarray, time_deltas = create_training_xarray_1deg(
+                training_xarray, time_deltas = create_training_xarray(
                     fields_sfc=self.fields_sfc,
                     fields_pl=self.fields_pl,
                     lagged=self.lagged,

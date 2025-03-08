@@ -17,7 +17,7 @@ requires = [
 
 [project]
 name = "ai-models-graphcast-gfs"
-version = "0.0.17"
+version = "0.0.18"
 
 
 description = "An ai-models plugin to run Deepmind's graphcast model"
