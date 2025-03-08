@@ -16,7 +16,6 @@ import xarray
 from ai_models_gfs.model import Model
 
 from .input import create_training_xarray
-from .input import create_training_xarray_1deg
 from .output import save_output_xarray
 
 LOG = logging.getLogger(__name__)
@@ -176,7 +175,7 @@ class GraphcastModel(Model):
 
     def run(self):
         # We ignore 'tp' so that we make sure that step 0 is a field of zero values
-        self.write_input_fields(self.fields_sfc, ignore=["tp"], accumulations=["tp"])
+        self.write_input_fields(self.fields_sfc, ignore=["tp","100u","100v","tcwv","sp","lsm","z"], accumulations=["tp"])
         self.write_input_fields(self.fields_pl)
 
         with self.timer("Building model"):
@@ -413,7 +412,7 @@ class GraphcastModel1Deg(Model):
 
     def run(self):
         # We ignore 'tp' so that we make sure that step 0 is a field of zero values
-        self.write_input_fields(self.fields_sfc, ignore=["tp"], accumulations=["tp"])
+        self.write_input_fields(self.fields_sfc, ignore=["tp","100u","100v","tcwv","sp","lsm","z"], accumulations=["tp"])
         self.write_input_fields(self.fields_pl)
 
         with self.timer("Building model"):
@@ -431,6 +430,7 @@ class GraphcastModel1Deg(Model):
                     forcing_variables=self.forcing_variables,
                     constants=self.override_constants,
                     timer=self.timer,
+                    onedeg=True
                 )
 
             gc.collect()
